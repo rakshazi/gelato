@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Gelato!</title>
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Gelato" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <style>
+      :root{
+        --bg: #f5ddbe;      /* page / image background */
+        --bubble-bg: #ffffff;
+        --bubble-text: #5a3740;
+        --gap: 1px;        /* gap between image and bubble */
+      }
+
+      html,body{
+        height:100%;
+        margin:0;
+        background:var(--bg);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Helvetica Neue";
+      }
+
+      .container{
+        position:relative;
+        display:inline-block;
+        overflow:visible; /* ensure tail can be visible outside bubble */
+      }
+
+      #mascot{
+        display:block;
+        max-width:320px;
+        width: min(44vw, 320px);
+        height:auto;
+        animation: float 3.6s ease-in-out infinite;
+      }
+
+      @keyframes float{
+        0%   { transform: translateY(0); }
+        50%  { transform: translateY(-8px); }
+        100% { transform: translateY(0); }
+      }
+
+      /* comic bubble */
+      .bubble{
+        position:absolute;
+        left: calc(100% + var(--gap));
+        top: 50%;
+        transform: translateY(-50%);
+        max-width: 260px;
+        width: 260px;
+        background: var(--bubble-bg);
+        color: var(--bubble-text);
+        padding: 12px 14px;
+        border-radius: 16px;
+        box-shadow: 0 8px 22px rgba(90,55,64,0.08);
+        font-size: 0.95rem;
+        line-height: 1.25;
+        transition: opacity .28s ease, transform .18s ease, left .2s ease, top .2s ease;
+        opacity: 1;
+        pointer-events: none;
+        overflow: visible; /* so SVG tail remains visible */
+        border: 1px solid rgba(0,0,0,0.03);
+      }
+      .bubble::before {
+        content: '';
+        position: absolute;
+        top: 50%; /* moved down to match bubble vertical shift */
+        left: -29px;
+        width: 30px;
+        height: 20px;
+        background: #fff;
+        clip-path: polygon(100% 0, 0 50%, 100% 100%);
+      }
+
+      .bubble.hidden{ opacity: 0; }
+
+      /* When bubble is above the mascot, place the tail centered at bubble's bottom and flip it */
+      .bubble.bubble--above {
+        left: 50%;
+        transform: translate(-50%, -120%); /* move above mascot */
+        top: auto;
+      }
+      .bubble.bubble--above::before {
+        left: calc(50% - 15px); /* center tail */
+        top: -20px; /* use custom property for tail Y position */
+        transform: rotate(90deg); /* flip the tail */
+      }
+      .bubble.bubble--above {
+        left: calc(50% - 14px);
+        top: 100%;
+        transform: translateY(0) rotate(180deg);
+      }
+      .bubble.bubble--above span {
+        transform: translateY(0) rotate(180deg);
+      }
+
+      /* keep layout stable */
+      #joke { min-height: 2.5em; display:block; }
+      @media (max-width:420px){
+        #mascot { width: 200px; }
+        .bubble { max-width: 210px; font-size: .88rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container" id="container">
+      <img id="mascot" src="mascot.320x320.webp" alt="Gelatti" />
+
+      <!-- Speech bubble (default text acts as no-JS fallback) -->
+      <div class="bubble" id="bubble" role="status" aria-live="polite">
+        <span id="joke">
+          Hey. You weren't on the guest list.
+          But fine — take a scoop. Don't tell anyone I bribed you with gelato 🍨
+        </span>
+
+      </div>
+    </div>
+
+    <script>
+      /* ---- jokes list ---- */
+      const jokes = [
+        "Hey. You weren't on the guest list. But fine — take a scoop. Don't tell anyone I bribed you with gelato 🍨",
+        "You look lost, sweetie. Want me to stab you... with a waffle cone? 🍦",
+        "Hey stranger, want a brain freeze and emotional damage in one scoop? 🍨",
+        "Come closer… I promise the sprinkles aren’t poisoned. Probably. 🌸",
+        "I churned this gelato with pure malice and 20% love. ❤️",
+        "You scream, I scream, everyone screams… for different reasons. 🍧",
+        "Careful, my gelato bites back. Hard. 🐾",
+        "Don’t run away, dessert tastes better when you’re terrified. 😈",
+        "You’re not on the guest list, but I’ll bribe you with sorbet. 🍋",
+        "Every scoop I serve steals a tiny piece of your soul. 💀",
+        "This gelato is 90% sugar, 10% chaos. 🌀",
+        "Want some sprinkles with your impending doom? 🌈",
+        "Gelato so good you’ll forget your safe word. 😉",
+        "The cone is crunchy, your fate is crunchier. 🪓",
+        "You can’t escape… I already pre-scooped your destiny. ❄️",
+        "If you drop it, I drop you. 🔪",
+        "Gelato therapy: first bite free, consequences extra. 💸",
+        "You’re cute… almost cute enough for free toppings. Almost. 😏",
+        "Let me sweeten your day… aggressively. 💥",
+        "The ice cream truck plays my battle theme. 🎵",
+        "This gelato pairs well with regret. 🍫",
+        "Do you prefer vanilla, chocolate, or mild intimidation? 🍦",
+        "It’s okay, I only hex people who order sorbet. 🧙‍♀️",
+        "Eat now, run later… if you can. 🏃‍♂️",
+        "Every lick brings you closer to danger. 🐉",
+        "Cone or cup? Wrong answer. ☠️",
+        "You thought you came for dessert, but dessert came for you. 🔮",
+        "Don’t mind the screams from the freezer. They’re just… cherries. 🍒",
+        "If you finish the triple scoop, you unlock my final form. 🦋",
+        "The sprinkles know your secrets. 🤫",
+        "Say 'ahh'… forever. 🌌",
+        "Life is short, eat gelato — before it eats you. 🐾",
+        "Pick a flavor. Pick a fate. I'll be here, smirking. 😏🍨",
+        "Blink twice for sprinkles. Blink once for judgment. 👀✨",
+        "Choose wisely. I grade on a waffle curve. 🍦📚",
+        "Today's special: pistachio with a hint of menace. 💚😼",
+        "You get one free sample and unlimited side-eye. 🥄🙃",
+        "I'm small, I'm sweet, I'm mildly terrifying. Order up. 🎀🍧",
+        "Ask nicely. I'm bilingual in sweet and sass. 💬🍨",
+        "Whipped cream? Only if you've been emotionally responsible. 🍒📝",
+        "I don't do discounts. I do standards. High ones. 💅🍦",
+        "Flavor notes: vanilla, velvet, victory. 🏆🍨",
+        "If you flinch, I'm adding basil. 🌿😉",
+        "Touch my gelato and we have a situation. 🫳🍨",
+        "Eat faster. The drama is melting. 🎭🫠",
+        "I stirred this with a spoon and pure accountability. 🥄✨",
+        "Cone or cup? Wrong. It's an audition. 🎤🍦",
+        "Make a wish. If it's gelato, approved. 🌟🍧",
+        "Chocolate so dark it remembers your texts. 🍫🫢",
+        "Sorbet is for the drama-averse. I see you. 🍋😌",
+        "Yes, it's artisanal. No, that doesn't make you special. I do. 👑🍨",
+        "Smile with your eyes. The cone is watching. 👀🍦",
+        "My sprinkles keep receipts. 🤫🌈",
+        "Your spoon is plastic. My will is titanium. 🧊💪",
+        "Be brave. It's lemon. It bites a little. 🍋😈",
+        "Three licks in and you're negotiating with destiny. 🔮🍨",
+        "Napkins? That's adorable. 🧻🙂",
+        "Ask for a sample, get a vibe check. 🥄🧭",
+        "I'm limited edition and unlimited opinions. 💬✨",
+        "Sundae? It's Tuesday. I break rules, not hearts. Usually. 📅😉",
+        "I garnish with mint and judgment. 🌿😌",
+        "No loyalty card here. Earn it with charisma. 🎟️😏",
+        "I can fix your mood faster than your life choices. ⚡🍧",
+        "We do refills. Of attitude. 🔁💁‍♀️",
+        "You drop it, you do the tiny walk of shame. 🚶‍♂️🍦",
+        "Yes, it's cold. I'm colder. 🥶💋",
+        "Don't overthink it. That's my job. 🧠🍨",
+        "Gelato first, epiphany later. 💡🍦",
+        "I portion control by vibes. 🔮🥄",
+        "Choose chaos? That's the stracciatella. 🍫🌀",
+        "You're cute. Not 'extra scoop' cute, but cute. 😏🍧",
+        "I take compliments in the form of toppings. 🍒💌",
+        "Flavor of the day: consequences. 📋🍨",
+        "Waffle cones are my love language and my boundary. 🍦❤️",
+        "I flavored this with espresso and unspoken expectations. ☕😼",
+        "Order a double and I'll double my standards. ✌️📈",
+        "Calorie math? I majored in denial. 🎓🙃",
+        "Be sweet or be gone. I have a line. 🧁➡️",
+        "Finish it before it finishes judging you. ⏳🍦",
+        "House rule: pace yourself, not me. 🏠😌",
+        "I sprinkle hope and mild intimidation. 🌈😈",
+        "You're a delight. My gelato is the main character. 🎬🍨",
+        "Careful—this pistachio has opinions. 💚🗣️",
+        "I schedule kindness between scoops. You're welcome. 🗓️🍧",
+        "Try me. No, the gelato. Try the gelato. 😅🍨",
+        "The freezer keeps secrets. I don't. 🧊🤐",
+        "Your destiny is two scoops and a reality check. 🥄🔮",
+        "My apron says 'please' on one side and 'try again' on the other. 👗😉",
+        "Taste test? That's a commitment ceremony. 💍🍦",
+        "I run on sugar, spite, and impeccable timing. ⏰🍭",
+        "Pick a topping. Wrong answers get confetti anyway. 🎉🌈",
+        "I do customer service with a flourish and a warning. 🎀⚠️",
+        "Sweetness guaranteed. Compliance encouraged. ✅🍧",
+        "This tiramisu believes in you. I remain skeptical. ☕😌",
+        "I serve moments, not just scoops. Some are louder. 📣🍨",
+        "No such thing as too much gelato, just too little courage. 💫🍦",
+        "Your aura says vanilla. Prove me wrong. ✨🍨",
+        "I don't chase. I chill. Then I judge. 🧊🧐",
+        "Careful with the caramel. It remembers everything. 🍯👀",
+        "Spoonful of sweetness, dash of menace. Balanced. ⚖️🍧",
+        "Welcome to my gelato arc. Character development not optional. 📚🍦",
+        "I came with sprinkles and an agenda. 🌈📝",
+        "Say 'ahh'... for a reasonable amount of time. 🌬️🍨",
+        "If you hesitate, I curate. 🖼️🥄",
+        "I'm the plot twist your sweet tooth ordered. 🔀🍧"
+      ];
+
+      const bubble = document.getElementById('bubble');
+      const jokeEl = document.getElementById('joke');
+      const mascot = document.getElementById('mascot');
+      const container = document.getElementById('container');
+
+      let lastIndex = -1;
+
+      /* pick a random joke, fade out/in, reposition bubble after text change */
+      function setRandomJoke() {
+        let idx;
+        do {
+          idx = Math.floor(Math.random() * jokes.length);
+        } while (idx === lastIndex && jokes.length > 1);
+        lastIndex = idx;
+
+        bubble.classList.add('hidden');
+        setTimeout(() => {
+          jokeEl.textContent = jokes[idx];
+          positionBubble(); // reposition after content change (bubble size may change)
+          bubble.classList.remove('hidden');
+        }, 280);
+      }
+
+      /* Position the bubble and tail to point to mascot's mouth.
+   If there is not enough room to the right, place bubble above the mascot
+   and flip the tail downward.
+       */
+      function positionBubble() {
+        const mRect = mascot.getBoundingClientRect();
+        const cRect = container.getBoundingClientRect();
+
+        // relative mouth Y inside the image (tweak this if tail needs vertical adjustment)
+        const mouthRel = 0.62; // 0..1 (0 = top, 1 = bottom)
+        const mouthY = mRect.top - cRect.top + mouthRel * mRect.height;
+
+        // default bubble to the right of image
+        const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 20;
+        let left = (mRect.right - cRect.left) + gap;
+        let top = mouthY - bubble.offsetHeight * 0.5;
+
+        // clamp top so bubble doesn't go outside container (a little margin)
+        const minTop = 6;
+        const maxTop = window.innerHeight - cRect.top - 6 - bubble.offsetHeight;
+        if (top < minTop) top = minTop;
+        if (top > maxTop) top = maxTop;
+
+        // Check if bubble overflows viewport on the right; if so, place it above the mascot
+        const willOverflowRight = (left + bubble.offsetWidth + 260) > (window.innerWidth - 8);
+        if (willOverflowRight) {
+          // place above, centered horizontally relative to mascot
+          bubble.classList.add('bubble--above');
+          const centeredLeft = (mRect.left - cRect.left) + (mRect.width / 2) - (bubble.offsetWidth / 2);
+          bubble.style.left = `${Math.max(8, centeredLeft)}px`;
+          // place above mascot with small gap
+          bubble.style.top = `${(mRect.top - cRect.top) - bubble.offsetHeight - 12}px`;
+          // tail: position near bottom center of bubble
+          const tailY = bubble.offsetHeight - 6; // a little above bottom edge
+          bubble.style.setProperty('--tail-top', `${tailY}px`);
+        } else {
+          bubble.classList.remove('bubble--above');
+          bubble.style.left = `${left}px`;
+          bubble.style.top = `${top}px`;
+          // compute tail Y within bubble (so it points to mouth position)
+          const tailY = (mouthY - top);
+          // clamp inside bubble
+          const clampedTailY = Math.max(8, Math.min(bubble.offsetHeight - 8, tailY));
+          bubble.style.setProperty('--tail-top', `${clampedTailY}px`);
+        }
+      }
+
+      /* attach events */
+      window.addEventListener('resize', positionBubble);
+      window.addEventListener('scroll', positionBubble);
+      window.addEventListener('orientationchange', positionBubble);
+
+      /* On image load or if cached already, position and start jokes */
+      function start() {
+        positionBubble();
+        setRandomJoke();
+        setInterval(setRandomJoke, 4000);
+      }
+
+      if (mascot.complete) {
+        // image already loaded from cache
+        start();
+      } else {
+        mascot.addEventListener('load', start);
+      }
+    </script>
+  </body>
+</html>
