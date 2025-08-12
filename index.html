@@ -28,6 +28,11 @@
         font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Helvetica Neue";
       }
 
+      a {
+        color: #5a3740;
+        font-weight: 500;
+      }
+
       .container{
         position:relative;
         display:inline-block;
@@ -120,7 +125,10 @@
           Hey. You weren't on the guest list.
           But fine — take a scoop. Don't tell anyone I bribed you with gelato 🍨
         </span>
+      </div>
 
+      <div style="text-align: center">
+        ✉️ <a id="contact" title="magically valid email">🍦@🍨.🏠</a>
       </div>
     </div>
 
@@ -241,6 +249,20 @@
 
       let lastIndex = -1;
 
+      /* set the contact link to a mailto: link. Why so hard? To prevent spam bots from harvesting it. */
+      function setContactLink() {
+        const contactEl = document.getElementById('contact');
+        const domain = window.location.hostname;
+        if (!domain) {
+          contactEl.href = `javascript:alert('Hey, sweetie. Not your flavor. Put the spoon down and scoot. 🍨💅')`;
+          return;
+        }
+        const contactValue = window.location.hostname.split('.')[0] + '@' + window.location.hostname
+
+        contactEl.href = `mailto:${contactValue}`;
+        console.log(`Contact link set to: ${contactEl.href}`);
+      }
+
       /* pick a random joke, fade out/in, reposition bubble after text change */
       function setRandomJoke() {
         let idx;
@@ -308,6 +330,7 @@
       window.addEventListener('resize', positionBubble);
       window.addEventListener('scroll', positionBubble);
       window.addEventListener('orientationchange', positionBubble);
+      window.addEventListener('load', setContactLink);
 
       /* On image load or if cached already, position and start jokes */
       function start() {
